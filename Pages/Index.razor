@@ -1,0 +1,45 @@
+﻿@page "/"
+@inject Blazored.LocalStorage.ILocalStorageService storage;
+@using LiteDB;
+@using System.IO;
+@using System.Buffers
+
+<input type="button"  @onclick="@(() => OnReload())" value="Reload List Random"></input>
+
+@foreach (var person in Persons)
+{
+    <p>@person.Id - @person.Name</p>
+}
+
+@code {
+    public class Person {
+        public int Id {get;set;}
+        public string Name {get;set;}
+    }
+
+    List<Person> Persons = new List<Person>();
+    Random rnd = new Random();
+    private void OnReload() {
+   Persons =  new List<Person>();
+        StateHasChanged();
+        var persons = db.GetCollection<Person>("Persons");
+        Persons = persons.FindAll().OrderBy(p => rnd.Next(1, 10000)).ToList();
+        StateHasChanged();
+    }
+
+    private LiteDatabase db;
+    private LocalStorageStream stream;
+
+    protected override async Task OnInitializedAsync(){
+        stream = await LocalStorageStream.Load(storage);
+        db = new LiteDatabase(stream);
+        var persons = db.GetCollection<Person>("Persons");
+        persons.Insert(new Person(){
+            Name = "pippo " + DateTime.Now.ToString()
+        }); 
+        Persons = persons.FindAll().OrderBy(p => p.Id).ToList(); 
+
+        stream.Flush();
+        StateHasChanged();
+    }
+}
